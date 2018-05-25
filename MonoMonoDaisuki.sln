@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2043
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "MonoMonoDaisuki", "MonoMonoDaisuki\MonoMonoDaisuki.shproj", "{A0CDBD0E-3A41-42B7-9425-A838BC2C7383}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonoMonoDaisuki.Windows", "MonoMonoDaisuki.Windows\MonoMonoDaisuki.Windows.csproj", "{61EF5EC6-740F-43F6-9BBA-BBD2975ABAE0}"
+EndProject
+Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		MonoMonoDaisuki\MonoMonoDaisuki.projitems*{61ef5ec6-740f-43f6-9bba-bbd2975abae0}*SharedItemsImports = 4
+		MonoMonoDaisuki\MonoMonoDaisuki.projitems*{a0cdbd0e-3a41-42b7-9425-a838bc2c7383}*SharedItemsImports = 13
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{61EF5EC6-740F-43F6-9BBA-BBD2975ABAE0}.Debug|x86.ActiveCfg = Debug|x86
+		{61EF5EC6-740F-43F6-9BBA-BBD2975ABAE0}.Debug|x86.Build.0 = Debug|x86
+		{61EF5EC6-740F-43F6-9BBA-BBD2975ABAE0}.Release|x86.ActiveCfg = Release|x86
+		{61EF5EC6-740F-43F6-9BBA-BBD2975ABAE0}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {63BD1C80-BDF1-4C2D-8FFD-A6C5EBE33C81}
+	EndGlobalSection
+EndGlobal
