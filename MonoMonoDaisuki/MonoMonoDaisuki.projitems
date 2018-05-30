@@ -9,10 +9,12 @@
     <Import_RootNamespace>MonoMonoDaisuki</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Engine\Engine.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Engine\Core.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Engine\Logger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Engine\Profiler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Engine\Scene.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Game1.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Game\MainScene.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)MonoMonoDaisuki.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Game\GameScene.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Content\" />

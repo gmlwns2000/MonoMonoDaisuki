@@ -4,27 +4,31 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace MonoMonoDaisuki.Engine
 {
     public class HitTester
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsHit(GameObject me, GameObject other)
         {
-            if(me.Sprite != null && me.Sprite is RectangleSprite)
+            if (me.Sprite != null && me.Sprite is RectangleSprite)
             {
-                if(other.Sprite != null && other.Sprite is RectangleSprite)
+                if (other.Sprite != null && other.Sprite is RectangleSprite)
                 {
-                    return hitRectRect(me, other);
+                    return HitRectRect(me, other);
                 }
             }
             return false;
         }
 
-        bool hitRectRect(GameObject me, GameObject other)
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool HitRectRect(GameObject me, GameObject other)
         {
-            if (me.X + me.Sprite.Width >= other.X && me.X <= other.X + other.Sprite.Width &&
-                me.Y + me.Sprite.Height >= other.Y && me.Y <= other.Y + other.Sprite.Height)
+            if (me.X + me.Width >= other.X && me.X <= other.X + other.Width &&
+                me.Y + me.Height >= other.Y && me.Y <= other.Y + other.Height)
             {
                 return true;
             }
@@ -44,29 +48,29 @@ namespace MonoMonoDaisuki.Engine
                 if (color != value)
                 {
                     color = value;
-                    if(loaded)
-                        UpdateCache();
+                    UpdateCache();
                 }
             }
         }
 
-        public RectangleSprite(double w, double h, Color color)
+        public RectangleSprite(Color color)
         {
-            Width = w;
-            Height = h;
             Color = color;
         }
 
-        public override void Draw(GameTime time, SpriteBatch batch, Vector2 pos)
+        public override void Draw(GameTime time, SpriteBatch batch, Rectangle target)
         {
-            batch.Draw(cache, new Rectangle(pos.ToPoint(), Size.ToPoint()), Color.White);
+            batch.Draw(cache, target, Color.White);
         }
 
         bool loaded = false;
         public override void Load()
         {
-            UpdateCache();
-            loaded = true;
+            if (!loaded)
+            {
+                loaded = true;
+                UpdateCache();
+            }
         }
 
         public override void Unload()
@@ -77,9 +81,12 @@ namespace MonoMonoDaisuki.Engine
 
         void UpdateCache()
         {
+            if (!loaded)
+                return;
+
             if (cache == null)
             {
-                cache = new Texture2D(Engine.GraphicsDevice, 1, 1);
+                cache = new Texture2D(Core.GraphicsDevice, 1, 1);
             }
             cache.SetData(new[] { color });
         }
@@ -87,14 +94,10 @@ namespace MonoMonoDaisuki.Engine
 
     public abstract class Sprite
     {
-        public double Width { get; set; }
-        public double Height { get; set; }
-        public virtual Vector2 Size => new Vector2((float)Width, (float)Height);
+        public abstract void Draw(GameTime time, SpriteBatch batch, Rectangle target);
 
-        public abstract void Draw(GameTime time, SpriteBatch batch, Vector2 pos);
-        
         public virtual void Load() { }
-        
+
         public virtual void Unload() { }
     }
 
@@ -104,14 +107,18 @@ namespace MonoMonoDaisuki.Engine
         public string Tag { get; set; }
 
         public string HitTestGroup { get; set; } = "Any";
-        public bool IsHitVisible { get; set; } = false;
-        public bool IsHittedVisible { get; set; } = false;
+        public bool IsHitVisible = false;
+        public bool IsHittedVisible = false;
 
         public virtual Sprite Sprite { get; set; }
 
-        public double X {get;set; }
-        public double Y {get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
         public Vector2 Position => new Vector2((float)X, (float)Y);
+        public Rectangle BoundBox => new Rectangle((int)X, (int)Y, (int)Width, (int)Height);
+        public Scene ParentScene { get; set; }
 
         public virtual void OnCollision(GameObject other) { }
 
@@ -129,13 +136,22 @@ namespace MonoMonoDaisuki.Engine
 
         public virtual void Draw(GameTime time, SpriteBatch batch)
         {
-            Sprite.Draw(time, batch, Position);
+            Sprite.Draw(time, batch, BoundBox);
+        }
+
+        public virtual void RemoveMe()
+        {
+            ParentScene.RemoveChild(this);
         }
     }
 
     public abstract class Scene
     {
         public virtual List<GameObject> Children { get; set; } = new List<GameObject>();
+        public bool MultiThreadCollision { get; set; } = false;
+        public bool IsLoaded { get; protected set; } = false;
+
+        List<GameObject> removePadding = new List<GameObject>();
 
         public virtual void OnLoad()
         {
@@ -143,6 +159,8 @@ namespace MonoMonoDaisuki.Engine
             {
                 Children[i].Load();
             }
+
+            IsLoaded = true;
         }
 
         public virtual void OnUnload()
@@ -151,6 +169,8 @@ namespace MonoMonoDaisuki.Engine
             {
                 Children[i].Unload();
             }
+
+            IsLoaded = false;
         }
 
         public virtual void OnUpdate(GameTime time)
@@ -171,46 +191,82 @@ namespace MonoMonoDaisuki.Engine
 
         public void UpdateHitTest(GameTime time)
         {
-            var tester = Engine.HitTester;
-            Parallel.For(0, Children.Count * Children.Count, (i)=>
+            var tester = Core.HitTester;
+
+            Profiler.Start("Scene.UpdateHitTest");
+
+            var cores = Environment.ProcessorCount;
+
+            if (MultiThreadCollision)
             {
-                var me = Children[i % Children.Count];
-                var other = Children[i / Children.Count];
-
-                if (other != me && other.IsHittedVisible && me.IsHitVisible && me.HitTestGroup == other.HitTestGroup)
+                Parallel.For(0, cores, (threadId) =>
                 {
-                    var result = tester.IsHit(me, other);
-                    if (result)
-                        me.OnCollision(other);
-                }
-            });
+                    var children = Children;
+                    var count = children.Count * children.Count;
+                    var block = Math.Max(1, count / cores);
+                    var loopTo = Math.Min(threadId + block * (threadId + 1), count);
+                    for (int i = threadId * block; i < loopTo; i++)
+                    {
+                        var me = children[i % children.Count];
+                        var other = children[i / children.Count];
 
-            //foreach (var me in Children)
-            //{
-            //    if (me.IsHitVisible)
-            //    {
-            //        foreach (var other in Children)
-            //        {
-            //            if (other != me && other.IsHittedVisible && me.HitTestGroup == other.HitTestGroup)
-            //            {
-            //                var result = tester.IsHit(me, other);
-            //                if (result)
-            //                    me.OnCollision(other);
-            //            }
-            //        }
-            //    }
-            //}
+                        if (other != me && other.IsHittedVisible && me.IsHitVisible && me.HitTestGroup == other.HitTestGroup)
+                        {
+                            var result = tester.IsHit(me, other);
+                            if (result)
+                                me.OnCollision(other);
+                        }
+                    }
+                });
+            }
+            else
+            {
+                var children = Children;
+                for (int i = 0; i < children.Count * children.Count; i++)
+                {
+                    var me = children[i % children.Count];
+                    var other = children[i / children.Count];
+
+                    if (other != me && other.IsHittedVisible && me.IsHitVisible && me.HitTestGroup == other.HitTestGroup)
+                    {
+                        var result = tester.IsHit(me, other);
+                        if (result)
+                            me.OnCollision(other);
+                    }
+                }
+            }
+
+            Profiler.End("Scene.UpdateHitTest");
         }
 
         public void Update(GameTime time)
         {
             UpdateHitTest(time);
             OnUpdate(time);
+            for (int i = 0; i < removePadding.Count; i++)
+            {
+                if (!Children.Remove(removePadding[i]))
+                    Logger.Error("obj not found");
+            }
+            removePadding.Clear();
         }
 
         public void Draw(GameTime time, SpriteBatch batch)
         {
             OnDraw(time, batch);
+        }
+
+        public void AddChild(GameObject obj)
+        {
+            obj.ParentScene = this;
+            if (IsLoaded)
+                obj.Load();
+            Children.Add(obj);
+        }
+
+        public void RemoveChild(GameObject obj)
+        {
+            removePadding.Add(obj);
         }
     }
 }
