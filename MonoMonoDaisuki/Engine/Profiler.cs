@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MonoMonoDaisuki
+namespace MonoMonoDaisuki.Engine
 {
     public static class Profiler
     {

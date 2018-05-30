@@ -4,36 +4,176 @@ using MonoMonoDaisuki.Engine;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace MonoMonoDaisuki.Game
 {
-    public class EnemyBullet : GameObject
+    public class DirectionEnemyBullet : LinearEnemyBullet
     {
-        public EnemyBullet(double x, double y)
+        public DirectionEnemyBullet(double x, double y, double angle, double force)
+            : base(x, y, new Vector2(
+                (float)(force * Math.Cos(angle / 180 * Math.PI)),
+                (float)(force * Math.Sin(angle / 180 * Math.PI))))
         {
 
         }
     }
 
-    public class EnemyBulletWaveGenerator
+    public class LinearEnemyBullet : EnemyBullet
     {
+        public Vector2 Force { get; set; }
 
+        public LinearEnemyBullet(double x, double y, Vector2 force)
+            : base(x, y)
+        {
+            Width = 5;
+            Height = 5;
+            Force = force;
+            Sprite = new RectangleSprite(Color.Cyan);
+        }
+
+        public override void Update(GameTime time)
+        {
+            X += Force.X;
+            Y += Force.Y;
+
+            base.Update(time);
+        }
     }
 
-    public class EnemyBulletSchedulerDefine
+    public class EnemyBullet : GameObject
     {
+        public EnemyBullet(double x, double y)
+        {
+            IsHittedVisible = true;
+            IsHitVisible = false;
 
+            X = x;
+            Y = y;
+        }
+
+        public override void Update(GameTime time)
+        {
+            if (X > ParentScene.Width || X < -Width || Y < -Height || Y > ParentScene.Height)
+                RemoveMe();
+            base.Update(time);
+        }
     }
 
-    public class EnemyBulletScheduler
+    public class ActionEnemyBulletWave : EnemyBulletWave
     {
+        public Action Action { get; set; }
+        public bool IsAsync { get; set; } = true;
 
+        public ActionEnemyBulletWave(Enemy Parent, TimeSpan Duration, Action action, bool isAsync = true)
+            : base(Parent, Duration)
+        {
+            Action = action;
+            IsAsync = isAsync;
+        }
+
+        public override void Start()
+        {
+            if (IsAsync)
+            {
+                Task.Factory.StartNew(Action);
+                return;
+            }
+            Action.Invoke();
+        }
+    }
+
+    public abstract class EnemyBulletWave
+    {
+        public TimeSpan Duration { get; set; }
+        public Enemy Parent { get; set; }
+
+        public EnemyBulletWave(Enemy parent, TimeSpan duration)
+        {
+            Duration = duration;
+        }
+
+        public abstract void Start();
+    }
+
+    public class AllDirectionEnemyBulletWave : ActionEnemyBulletWave
+    {
+        public AllDirectionEnemyBulletWave(Enemy parent, double bulletCount, double shootCount, double shootInterval, double bulletForce, Sprite sprite)
+            : base(parent, TimeSpan.FromMilliseconds(shootCount * shootInterval), null)
+        {
+            Action = new Action(() =>
+            {
+                var scene = parent.ParentScene;
+                for (int i = 0; i < shootCount; i++)
+                {
+                    var angleStep = 360 / bulletCount;
+                    var angle = .0;
+                    for (int ii = 0; ii < bulletCount; ii++)
+                    {
+                        scene.AddChild(new DirectionEnemyBullet(parent.Center.X, parent.Center.Y, angle, bulletForce)
+                        {
+                            Sprite = sprite
+                        } );
+                        angle += angleStep;
+                    }
+                    Core.Sleep(shootInterval);
+                }
+            });
+        }
+    }
+
+    public class EnemyBulletWaveScheduler
+    {
+        public virtual bool IsLoop { get; set; } = false;
+        public virtual int WaveIndex { get; set; } = 0;
+        public virtual List<EnemyBulletWave> Waves { get; set; } = new List<EnemyBulletWave>();
+
+        protected virtual EnemyBulletWave CurrentWave => (WaveIndex >= Waves.Count || WaveIndex < 0) ? null : Waves[WaveIndex];
+        EnemyBulletWave lastwave;
+        GameTimer timer;
+        TimeSpan lastGen = new TimeSpan();
+
+        public void Start()
+        {
+            if (timer == null)
+            {
+                timer = new GameTimer(TimeSpan.FromMilliseconds(1));
+                timer.Tick += TickUpdate;
+            }
+            timer.Start();
+        }
+
+        private void TickUpdate(object sender, TimeSpan e)
+        {
+            if (WaveIndex >= Waves.Count)
+            {
+                if (IsLoop)
+                    WaveIndex = -1;
+                else
+                    return;
+            }
+
+            if (e - lastGen > ((lastwave == null) ? new TimeSpan() : lastwave.Duration))
+            {
+                CurrentWave?.Start();
+                lastGen = e;
+                lastwave = CurrentWave;
+
+                WaveIndex += 1;
+            }
+        }
+
+        public void Stop()
+        {
+            timer.Stop();
+        }
     }
 
     public class Enemy : GameObject
     {
         public virtual double BodyDamage { get; set; } = 20;
         public virtual Stage Stage { get; set; }
+        public EnemyBulletWaveScheduler WaveScheduler { get; set; } = new EnemyBulletWaveScheduler();
 
         double targetX = 0;
         double speedX = 3;
@@ -47,11 +187,31 @@ namespace MonoMonoDaisuki.Game
 
             Sprite = new RectangleSprite(Color.Lime);
 
+            WaveScheduler.IsLoop = true;
+            WaveScheduler.Waves = new List<EnemyBulletWave>()
+            {
+                new AllDirectionEnemyBulletWave(this, 20, 4, 300, 5, new RectangleSprite(Color.Cyan))
+            };
+        }
+
+        public override void Load()
+        {
+            base.Load();
+
             Width = 100;
             Height = 64;
-            X = Core.ScreenWidth / 2 - Width / 2;
+            X = ParentScene.Width / 2 - Width / 2;
             Y = 60;
             RandomTarget();
+
+            WaveScheduler.Start();
+        }
+
+        public override void Unload()
+        {
+            base.Unload();
+
+            WaveScheduler.Stop();
         }
 
         public override void Update(GameTime time)
@@ -127,11 +287,16 @@ namespace MonoMonoDaisuki.Game
             IsHitVisible = true;
 
             Sprite = new RectangleSprite(Color.Red);
+        }
+
+        public override void Load()
+        {
+            base.Load();
 
             Width = 25;
             Height = 25;
-            X = Core.ScreenWidth / 2 - Width / 2;
-            Y = Core.ScreenHeight * 0.75 - Height / 2;
+            X = ParentScene.Width / 2 - Width / 2;
+            Y = ParentScene.Height * 0.75 - Height / 2;
         }
 
         public override void Update(GameTime time)
@@ -157,7 +322,7 @@ namespace MonoMonoDaisuki.Game
             if (fireTimer > FireFrame)
                 fireTimer = 0;
             if (fireTimer == 0)
-                ParentScene.AddChild(GetNewBullet());
+                OnFire();
         }
 
         public override void OnCollision(GameObject other)
@@ -169,9 +334,11 @@ namespace MonoMonoDaisuki.Game
             }
         }
 
-        protected virtual PlayerBullet GetNewBullet()
+        protected virtual void OnFire()
         {
-            return new PlayerBullet(X + Width / 2, Y - 20);
+            ParentScene.AddChild(new PlayerBullet(Center.X - 10, Y - 20));
+            ParentScene.AddChild(new PlayerBullet(Center.X, Y - 20));
+            ParentScene.AddChild(new PlayerBullet(Center.X + 10, Y - 20));
         }
     }
 
@@ -190,6 +357,12 @@ namespace MonoMonoDaisuki.Game
             Stages.Add(new TestStage(this));
         }
 
+        public void Restart()
+        {
+            CurrentStage.Stop();
+            CurrentStage.Start();
+        }
+
         public void StartNext()
         {
             StageIndex++;
@@ -199,7 +372,7 @@ namespace MonoMonoDaisuki.Game
 
         void CurrentStage_StageFinished(object sender, StageFinishedArgs e)
         {
-            Logger.Log("stage finished");
+            Logger.Log($"stage finished state:{e.State}");
         }
     }
 
@@ -211,6 +384,8 @@ namespace MonoMonoDaisuki.Game
 
         public TestStage(StageManager manager) : base(manager)
         {
+            MaxEnemyHP = EnemyHP = 1000;
+            MaxPlayerHP = PlayerHP = 200;
             scene = manager.GameScene;
             enemy = new Enemy(this);
             player = new Player(this);
@@ -225,7 +400,13 @@ namespace MonoMonoDaisuki.Game
         public override void Stop()
         {
             scene.RemoveChild(enemy);
-            scene.RemoveChild(enemy);
+            scene.RemoveChild(player);
+            for (int i = 0; i < scene.Children.Count; i++)
+            {
+                var c = scene.Children[i];
+                if (c is EnemyBullet || c is PlayerBullet)
+                    c.RemoveMe();
+            }
         }
     }
 
@@ -264,7 +445,16 @@ namespace MonoMonoDaisuki.Game
 
         public virtual void CheckStageValid()
         {
+            Console.WriteLine($"EnemyHP: {EnemyHP}/{MaxEnemyHP} PlayerHP: {PlayerHP}/{MaxPlayerHP} Combo: {Combo}");
             EnemyHP = Math.Max(0, EnemyHP);
+            PlayerHP = Math.Max(0, PlayerHP);
+
+            if(PlayerHP <= 0)
+            {
+                Stop();
+                StageFinished?.Invoke(this, new StageFinishedArgs(FinishState.Failed));
+            }
+
             if (EnemyHP <= 0)
             {
                 Stop();
@@ -303,10 +493,20 @@ namespace MonoMonoDaisuki.Game
 
         public GameScene()
         {
-            Core.SetScreenSize(385, 600);
+            Width = 385;
+            Height = 600;
 
             manager = new StageManager(this);
             manager.StartNext();
+        }
+
+        public override void OnUpdate(GameTime time)
+        {
+            base.OnUpdate(time);
+            if (Core.KeyState.IsKeyDown(Keys.R))
+            {
+                manager.Restart();
+            }
         }
     }
 }

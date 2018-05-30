@@ -5,13 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MonoMonoDaisuki
+namespace MonoMonoDaisuki.Engine
 {
     public static class Logger
     {
         public delegate void WriteMethodDelegate(string text);
-
-        public static event EventHandler Writed;
+        
         public static WriteMethodDelegate WriteMethod;
         public static Stopwatch Stopwatch;
         public static string TimeStamp

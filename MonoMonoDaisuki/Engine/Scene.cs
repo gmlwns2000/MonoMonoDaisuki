@@ -116,6 +116,7 @@ namespace MonoMonoDaisuki.Engine
         public double Y { get; set; }
         public double Width { get; set; }
         public double Height { get; set; }
+        public Vector2 Center => new Vector2((float)(X + Width / 2), (float)(Y + Height / 2));
         public Vector2 Position => new Vector2((float)X, (float)Y);
         public Rectangle BoundBox => new Rectangle((int)X, (int)Y, (int)Width, (int)Height);
         public Scene ParentScene { get; set; }
@@ -129,7 +130,7 @@ namespace MonoMonoDaisuki.Engine
 
         public virtual void Unload()
         {
-            Sprite?.Unload();
+
         }
 
         public virtual void Update(GameTime time) { }
@@ -147,6 +148,8 @@ namespace MonoMonoDaisuki.Engine
 
     public abstract class Scene
     {
+        public double Width { get; set; } = 1280;
+        public double Height { get; set; } = 720;
         public virtual List<GameObject> Children { get; set; } = new List<GameObject>();
         public bool MultiThreadCollision { get; set; } = false;
         public bool IsLoaded { get; protected set; } = false;
@@ -155,6 +158,8 @@ namespace MonoMonoDaisuki.Engine
 
         public virtual void OnLoad()
         {
+            Core.SetScreenSize(Width, Height);
+
             for (int i = 0; i < Children.Count; i++)
             {
                 Children[i].Load();
@@ -226,8 +231,8 @@ namespace MonoMonoDaisuki.Engine
                 {
                     var me = children[i % children.Count];
                     var other = children[i / children.Count];
-
-                    if (other != me && other.IsHittedVisible && me.IsHitVisible && me.HitTestGroup == other.HitTestGroup)
+                    
+                    if ((me!=null && other !=null) && other != me && other.IsHittedVisible && me.IsHitVisible && me.HitTestGroup == other.HitTestGroup)
                     {
                         var result = tester.IsHit(me, other);
                         if (result)
@@ -266,6 +271,7 @@ namespace MonoMonoDaisuki.Engine
 
         public void RemoveChild(GameObject obj)
         {
+            obj.Unload();
             removePadding.Add(obj);
         }
     }

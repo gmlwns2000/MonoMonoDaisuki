@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace MonoMonoDaisuki.Engine
 {
@@ -24,10 +25,90 @@ namespace MonoMonoDaisuki.Engine
         }
     }
 
+    public class GameTimer
+    {
+        bool isEnable = false;
+        public bool IsEnable
+        {
+            get => isEnable;
+            set
+            {
+                if (isEnable != value)
+                {
+                    isEnable = value;
+                    if (value)
+                    {
+                        Start();
+                    }
+                    else
+                    {
+                        Stop();
+                    }
+                }
+            }
+        }
+        public TimeSpan Interval { get; set; }
+        public event EventHandler<TimeSpan> Tick;
+
+        TimeSpan lastTick;
+
+        public GameTimer(TimeSpan interval)
+        {
+            Interval = interval;
+        }
+
+        public void Start()
+        {
+            lastTick = Core.LastGameTimeFrame.TotalGameTime;
+            Core.TimerScheduler.Register(this);
+            isEnable = true;
+        }
+
+        public void Stop()
+        {
+            Core.TimerScheduler.Unregister(this);
+            isEnable = false;
+        }
+
+        internal void CheckTick(TimeSpan elapsed)
+        {
+            if(elapsed - lastTick > Interval)
+            {
+                lastTick = elapsed;
+                Tick?.Invoke(this, elapsed);
+            }
+        }
+    }
+
+    public class GameTimerScheduler
+    {
+        List<GameTimer> Managed = new List<GameTimer>();
+
+        public void Update(GameTime gametime)
+        {
+            var temp = new List<GameTimer>(Managed);
+            foreach (var item in temp)
+            {
+                item.CheckTick(gametime.TotalGameTime);
+            }
+        }
+
+        public void Register(GameTimer timer)
+        {
+            Managed.Add(timer);
+        }
+
+        public void Unregister(GameTimer timer)
+        {
+            Managed.Remove(timer);
+        }
+    }
+
     public static class Core
     {
         public static GraphicsDeviceManager GraphicsDeviceManager { get; private set; }
         public static GraphicsDevice GraphicsDevice => GraphicsDeviceManager.GraphicsDevice;
+        public static GameTime LastGameTimeFrame { get; private set; } = new GameTime();
 
         public static Scene Scene { get; private set; }
         public static HitTester HitTester { get; private set; } = new HitTester();
@@ -37,6 +118,8 @@ namespace MonoMonoDaisuki.Engine
 
         public static double ScreenWidth {get; private set; }
         public static double ScreenHeight {get; private set; }
+
+        public static GameTimerScheduler TimerScheduler { get; private set; } = new GameTimerScheduler();
 
         public static void Initialize(GraphicsDeviceManager manager)
         {
@@ -69,8 +152,10 @@ namespace MonoMonoDaisuki.Engine
 
         public static void Update(GameTime time)
         {
+            LastGameTimeFrame = time;
             KeyState = Keyboard.GetState();
             MouseState = Mouse.GetState();
+            TimerScheduler.Update(time);
             Scene.Update(time);
         }
 
@@ -79,6 +164,24 @@ namespace MonoMonoDaisuki.Engine
             batch.Begin();
             Scene.Draw(time, batch);
             batch.End();
+        }
+
+        public static void Sleep(double durationMs) 
+        {
+            if (durationMs <= 5)
+            {
+                Thread.Sleep((int)Math.Round(durationMs));
+                return;
+            }
+            var start = Logger.Stopwatch.Elapsed;
+            while (true)
+            {
+                Thread.Sleep(1);
+                if(Logger.Stopwatch.Elapsed.TotalMilliseconds - start.TotalMilliseconds > durationMs)
+                {
+                    return;
+                }
+            }
         }
     }
 }
