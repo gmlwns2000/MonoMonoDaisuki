@@ -36,6 +36,14 @@ namespace MonoMonoDaisuki.Engine
         }
     }
 
+    public class Texture2DSprite : Sprite
+    {
+        public override void Draw(GameTime time, RenderContext batch, Rectangle target)
+        {
+
+        }
+    }
+
     public class RectangleSprite : Sprite
     {
         Texture2D cache;
@@ -58,9 +66,9 @@ namespace MonoMonoDaisuki.Engine
             Color = color;
         }
 
-        public override void Draw(GameTime time, SpriteBatch batch, Rectangle target)
+        public override void Draw(GameTime time, RenderContext batch, Rectangle target)
         {
-            batch.Draw(cache, target, Color.White);
+            batch.DrawTexture2D(cache, target);
         }
 
         bool loaded = false;
@@ -94,7 +102,7 @@ namespace MonoMonoDaisuki.Engine
 
     public abstract class Sprite
     {
-        public abstract void Draw(GameTime time, SpriteBatch batch, Rectangle target);
+        public abstract void Draw(GameTime time, RenderContext batch, Rectangle target);
 
         public virtual void Load() { }
 
@@ -135,7 +143,7 @@ namespace MonoMonoDaisuki.Engine
 
         public virtual void Update(GameTime time) { }
 
-        public virtual void Draw(GameTime time, SpriteBatch batch)
+        public virtual void Draw(GameTime time, RenderContext batch)
         {
             Sprite.Draw(time, batch, BoundBox);
         }
@@ -143,6 +151,11 @@ namespace MonoMonoDaisuki.Engine
         public virtual void RemoveMe()
         {
             ParentScene.RemoveChild(this);
+        }
+
+        public override string ToString()
+        {
+            return $"Name: {Name} Tag: {Tag} Pos: {X}, {Y}, {Width}, {Height}";
         }
     }
 
@@ -186,7 +199,7 @@ namespace MonoMonoDaisuki.Engine
             }
         }
 
-        public virtual void OnDraw(GameTime time, SpriteBatch batch)
+        public virtual void OnDraw(GameTime time, RenderContext batch)
         {
             for (int i = 0; i < Children.Count; i++)
             {
@@ -256,7 +269,7 @@ namespace MonoMonoDaisuki.Engine
             removePadding.Clear();
         }
 
-        public void Draw(GameTime time, SpriteBatch batch)
+        public void Draw(GameTime time, RenderContext batch)
         {
             OnDraw(time, batch);
         }

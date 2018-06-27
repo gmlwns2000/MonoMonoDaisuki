@@ -4,6 +4,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoMonoDaisuki.Engine;
 
 #if !WINDOWS
 //using Microsoft.Xna.Framework.Storage;
@@ -20,6 +21,7 @@ namespace MonoMonoDaisuki
     {
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
+        RenderContext renderContext;
 
         public MonoMonoDaisuki()
         {
@@ -40,6 +42,7 @@ namespace MonoMonoDaisuki
         protected override void LoadContent()
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
+            renderContext = new RenderContext(spriteBatch);
             
             //TODO: use this.Content to load your game content here 
         }
@@ -62,7 +65,7 @@ namespace MonoMonoDaisuki
         {
             GraphicsDevice.Clear(new Color(54,54,54));
 
-            Engine.Core.Draw(gameTime, spriteBatch);
+            Engine.Core.Draw(gameTime, renderContext);
             
             base.Draw(gameTime);
         }

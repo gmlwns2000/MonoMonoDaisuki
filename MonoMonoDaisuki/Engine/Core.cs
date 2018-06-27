@@ -86,10 +86,13 @@ namespace MonoMonoDaisuki.Engine
 
         public void Update(GameTime gametime)
         {
-            var temp = new List<GameTimer>(Managed);
+            var temp = Managed.ToArray();
             foreach (var item in temp)
             {
-                item.CheckTick(gametime.TotalGameTime);
+                if (item.IsEnable)
+                    item.CheckTick(gametime.TotalGameTime);
+                else
+                    Managed.Remove(item);
             }
         }
 
@@ -101,6 +104,57 @@ namespace MonoMonoDaisuki.Engine
         public void Unregister(GameTimer timer)
         {
             Managed.Remove(timer);
+        }
+    }
+
+    public class RenderContext : IDisposable
+    {
+        public SpriteBatch SpriteBatch { get; protected set; }
+
+        public RenderContext(SpriteBatch batch)
+        {
+            SpriteBatch = batch;
+        }
+
+        public void Begin()
+        {
+            SpriteBatch.Begin();
+        }
+
+        public void End()
+        {
+            SpriteBatch.End();
+            foreach(var item in caches)
+            {
+                item.Dispose();
+            }
+            caches.Clear();
+        }
+
+        List<Texture2D> caches = new List<Texture2D>();
+        public void DrawRectangle(Color color, Rectangle rect)
+        {
+            Texture2D rectCache = null;
+            if (rectCache == null)
+                rectCache = new Texture2D(SpriteBatch.GraphicsDevice, 1, 1);
+            rectCache.SetData(new[] { color });
+            DrawTexture2D(rectCache, rect);
+            caches.Add(rectCache);
+        }
+
+        public void DrawRectangle(Color color, double x, double y, double w, double h)
+        {
+            DrawRectangle(color, new Rectangle((int)Math.Round(x), (int)Math.Round(y),(int)Math.Round(w),(int)Math.Round(h)));
+        }
+
+        public void DrawTexture2D(Texture2D texture, Rectangle rect, Color? color = null)
+        {
+            SpriteBatch.Draw(texture, rect, color == null ? Color.White : (Color)color);
+        }
+
+        public void Dispose()
+        {
+
         }
     }
 
@@ -157,9 +211,19 @@ namespace MonoMonoDaisuki.Engine
             MouseState = Mouse.GetState();
             TimerScheduler.Update(time);
             Scene.Update(time);
+
+            if (KeyState.IsKeyDown(Keys.F12))
+            {
+                var items = Scene.Children.ToArray();
+                foreach (var item in items)
+                {
+                    Logger.Log($"{item}");
+                }
+                Thread.Sleep(500);
+            }
         }
 
-        public static void Draw(GameTime time, SpriteBatch batch)
+        public static void Draw(GameTime time, RenderContext batch)
         {
             batch.Begin();
             Scene.Draw(time, batch);
