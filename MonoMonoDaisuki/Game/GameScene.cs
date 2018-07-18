@@ -63,37 +63,6 @@ namespace MonoMonoDaisuki.Game
         }
     }
 
-    public class ActionEnemyBulletWave : EnemyBulletWave
-    {
-        public Action Action { get; set; }
-        public bool IsAsync { get; set; } = true;
-        protected CancellationToken CancellationToken;
-
-        public ActionEnemyBulletWave(Enemy Parent, TimeSpan Duration, Action action, bool isAsync = true)
-            : base(Parent, Duration)
-        {
-            CancellationTokenSource source = new CancellationTokenSource();
-            CancellationToken = source.Token;
-            Action = action;
-            IsAsync = isAsync;
-        }
-
-        public override void Start()
-        {
-            if (IsAsync)
-            {
-                Task.Factory.StartNew(Action);
-                return;
-            }
-            Action.Invoke();
-        }
-
-        public override void Stop()
-        {
-
-        }
-    }
-
     public abstract class EnemyBulletWave
     {
         public TimeSpan Duration { get; set; }
@@ -108,6 +77,49 @@ namespace MonoMonoDaisuki.Game
         public abstract void Stop();
     }
 
+    public class ActionEnemyBulletWave : EnemyBulletWave
+    {
+        public Action Action { get; set; }
+        public bool IsAsync { get; set; } = true;
+        protected CancellationTokenSource cancelSource;
+        protected Task task;
+
+        public ActionEnemyBulletWave(Enemy Parent, TimeSpan Duration, Action action, bool isAsync = true)
+            : base(Parent, Duration)
+        {
+            Action = action;
+            IsAsync = isAsync;
+        }
+
+        public override void Start()
+        {
+            Stop();
+
+            if (IsAsync)
+            {
+                cancelSource = new CancellationTokenSource();
+                task = Task.Factory.StartNew(Action, TaskCreationOptions.LongRunning);
+                return;
+            }
+            Action.Invoke();
+        }
+
+        public override void Stop()
+        {
+            if (task != null)
+            {
+                if(!task.IsCompleted)
+                    cancelSource.Cancel(true);
+                cancelSource.Dispose();
+                cancelSource = null;
+
+                task.Wait();
+                task.Dispose();
+                task = null;
+            }
+        }
+    }
+
     public class AllDirectionEnemyBulletWave : ActionEnemyBulletWave
     {
         public AllDirectionEnemyBulletWave(Enemy parent, double bulletCount, double shootCount, double shootInterval, double bulletForce, Sprite sprite, double angleOffset = 0, double bulletDamage = 10)
@@ -115,9 +127,17 @@ namespace MonoMonoDaisuki.Game
         {
             Action = new Action(() =>
             {
+                if (cancelSource == null)
+                    return;
+                var tk = cancelSource.Token;
                 var scene = parent.ParentScene;
+                Logger.Log($"thread id: {Thread.CurrentThread.ManagedThreadId}");
+                Thread.CurrentThread.Name = Thread.CurrentThread.ManagedThreadId.ToString();
                 for (int i = 0; i < shootCount; i++)
                 {
+                    if (tk.IsCancellationRequested)
+                        return;
+                    Logger.Log($"thread id: {Thread.CurrentThread.ManagedThreadId} gen bullet");
                     var angleStep = 360 / bulletCount;
                     var angle = angleOffset;
                     for (int ii = 0; ii < bulletCount; ii++)
@@ -129,9 +149,7 @@ namespace MonoMonoDaisuki.Game
                         } );
                         angle += angleStep;
                     }
-                    Core.Sleep(shootInterval);
-                    if (CancellationToken.IsCancellationRequested)
-                        return;
+                    Core.Sleep(shootInterval, tk);
                 }
             });
         }
@@ -140,13 +158,13 @@ namespace MonoMonoDaisuki.Game
     public class EnemyBulletWaveScheduler
     {
         public virtual bool IsLoop { get; set; } = false;
-        public virtual int WaveIndex { get; set; } = 0;
+        public virtual int NextWaveIndex { get; set; } = 0;
         public virtual List<EnemyBulletWave> Waves { get; set; } = new List<EnemyBulletWave>();
 
-        protected virtual EnemyBulletWave CurrentWave => (WaveIndex >= Waves.Count || WaveIndex < 0) ? null : Waves[WaveIndex];
-        EnemyBulletWave lastwave;
+        protected virtual EnemyBulletWave NextWave => (NextWaveIndex >= Waves.Count || NextWaveIndex < 0) ? null : Waves[NextWaveIndex];
+        protected EnemyBulletWave CurrentWave;
+        protected TimeSpan CurrentGen = new TimeSpan();
         GameTimer timer;
-        TimeSpan lastGen = new TimeSpan();
 
         public void Start()
         {
@@ -160,21 +178,21 @@ namespace MonoMonoDaisuki.Game
 
         private void TickUpdate(object sender, TimeSpan e)
         {
-            if (WaveIndex >= Waves.Count)
+            if (NextWaveIndex >= Waves.Count)
             {
                 if (IsLoop)
-                    WaveIndex = -1;
+                    NextWaveIndex = 0;
                 else
                     return;
             }
 
-            if (e - lastGen > ((lastwave == null) ? new TimeSpan() : lastwave.Duration))
+            if (e - CurrentGen > ((CurrentWave == null) ? new TimeSpan() : CurrentWave.Duration))
             {
-                CurrentWave?.Start();
-                lastGen = e;
-                lastwave = CurrentWave;
+                NextWave?.Start();
+                CurrentGen = e;
+                CurrentWave = NextWave;
 
-                WaveIndex += 1;
+                NextWaveIndex += 1;
             }
         }
 
@@ -189,7 +207,7 @@ namespace MonoMonoDaisuki.Game
     {
         public virtual double BodyDamage { get; set; } = 20;
         public virtual Stage Stage { get; set; }
-        public EnemyBulletWaveScheduler WaveScheduler { get; set; } = new EnemyBulletWaveScheduler();
+        public EnemyBulletWaveScheduler WaveScheduler { get; set; }
 
         double targetX = 0;
         double speedX = 3;
@@ -203,6 +221,7 @@ namespace MonoMonoDaisuki.Game
 
             Sprite = new RectangleSprite(Color.Lime);
 
+            WaveScheduler = new EnemyBulletWaveScheduler();
             WaveScheduler.IsLoop = true;
             WaveScheduler.Waves = new List<EnemyBulletWave>()
             {
@@ -294,6 +313,7 @@ namespace MonoMonoDaisuki.Game
 
         public override void Load()
         {
+            Logger.Log("OnLoad");
             base.Load();
 
             Width = 48;
@@ -476,8 +496,31 @@ namespace MonoMonoDaisuki.Game
 
         public void Restart()
         {
+            Stop();
+            StageIndex = -1;
+            StartNext();
+
+            Stop();
+            StageIndex = -1;
+            StartNext();
+
+            Stop();
+            StageIndex = -1;
+            StartNext();
+
+            Stop();
+            StageIndex = -1;
+            StartNext();
+
+            Stop();
+            StageIndex = -1;
+            StartNext();
+        }
+
+        public void Stop()
+        {
+            CurrentStage.StageFinished -= CurrentStage_StageFinished;
             CurrentStage.Stop();
-            CurrentStage.Start();
         }
 
         public void StartNext()

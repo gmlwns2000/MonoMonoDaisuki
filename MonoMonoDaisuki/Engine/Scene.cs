@@ -264,7 +264,9 @@ namespace MonoMonoDaisuki.Engine
             for (int i = 0; i < removePadding.Count; i++)
             {
                 if (!Children.Remove(removePadding[i]))
-                    Logger.Error("obj not found");
+                {
+                    //Logger.Error("obj not found");
+                }
             }
             removePadding.Clear();
         }

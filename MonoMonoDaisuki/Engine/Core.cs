@@ -66,8 +66,8 @@ namespace MonoMonoDaisuki.Engine
 
         public void Stop()
         {
-            Core.TimerScheduler.Unregister(this);
             isEnable = false;
+            Core.TimerScheduler.Unregister(this);
         }
 
         internal void CheckTick(TimeSpan elapsed)
@@ -92,7 +92,7 @@ namespace MonoMonoDaisuki.Engine
                 if (item.IsEnable)
                     item.CheckTick(gametime.TotalGameTime);
                 else
-                    Managed.Remove(item);
+                    Unregister(item);
             }
         }
 
@@ -103,6 +103,8 @@ namespace MonoMonoDaisuki.Engine
 
         public void Unregister(GameTimer timer)
         {
+            if (timer.IsEnable)
+                Logger.Throw("Timer should be disabled before unregister");
             Managed.Remove(timer);
         }
     }
@@ -221,6 +223,13 @@ namespace MonoMonoDaisuki.Engine
                 }
                 Thread.Sleep(500);
             }
+
+#if DEBUG
+            if (Keyboard.GetState().IsKeyDown(Keys.F11))
+            {
+                Logger.Log("Debug Hit!");
+            }
+#endif
         }
 
         public static void Draw(GameTime time, RenderContext batch)
@@ -230,7 +239,7 @@ namespace MonoMonoDaisuki.Engine
             batch.End();
         }
 
-        public static void Sleep(double durationMs) 
+        public static void Sleep(double durationMs, CancellationToken? token = null) 
         {
             if (durationMs <= 5)
             {
@@ -240,6 +249,9 @@ namespace MonoMonoDaisuki.Engine
             var start = Logger.Stopwatch.Elapsed;
             while (true)
             {
+                if (token.HasValue && token.Value.IsCancellationRequested)
+                    return;
+
                 Thread.Sleep(1);
                 if(Logger.Stopwatch.Elapsed.TotalMilliseconds - start.TotalMilliseconds > durationMs)
                 {
