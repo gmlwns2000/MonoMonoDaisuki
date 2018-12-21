@@ -3,7 +3,10 @@ using Microsoft.Xna.Framework.Input;
 using MonoMonoDaisuki.Engine;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -256,6 +259,166 @@ namespace MonoMonoDaisuki.Game
         }
     }
 
+    public class EnemyBulletWaveLoader
+    {
+        static List<Type> WaveDefines = new List<Type>();
+        static Dictionary<string, Color> ColorDict = new Dictionary<string, Color>();
+        static EnemyBulletWaveLoader()
+        {
+            var asm = Assembly.GetAssembly(typeof(EnemyBulletWaveLoader));
+            var types = asm.GetTypes();
+            foreach (var type in types)
+            {
+                if (type.IsSubclassOf(typeof(EnemyBulletWave)))
+                {
+                    WaveDefines.Add(type);
+                }
+            }
+
+            var colorProp = typeof(Color).GetProperties();
+            foreach (var prop in colorProp)
+            {
+                if (prop.PropertyType != typeof(Color))
+                    continue;
+                var c = (Color)prop.GetValue(null, null);
+                ColorDict.Add(prop.Name, c);
+            }
+        }
+
+        public string Path { get; set; }
+
+        public EnemyBulletWaveLoader(string path)
+        {
+            Path = path;
+        }
+
+        Color ParseHexColor(string colorcode)
+        {
+            colorcode = colorcode.TrimStart('#');
+
+            Color col;
+            if (colorcode.Length == 6)
+                col = new Color(
+                            int.Parse(colorcode.Substring(0, 2), NumberStyles.HexNumber),
+                            int.Parse(colorcode.Substring(2, 2), NumberStyles.HexNumber),
+                            int.Parse(colorcode.Substring(4, 2), NumberStyles.HexNumber), 255);
+            else // assuming length of 8
+                col = new Color(
+                            int.Parse(colorcode.Substring(2, 2), NumberStyles.HexNumber),
+                            int.Parse(colorcode.Substring(4, 2), NumberStyles.HexNumber),
+                            int.Parse(colorcode.Substring(6, 2), NumberStyles.HexNumber),
+                            int.Parse(colorcode.Substring(0, 2), NumberStyles.HexNumber));
+
+            return col;
+        }
+
+        string[] ParamParse(string content, char split = ',')
+        {
+            var ret = new List<string>();
+
+            var groupChar = new List<char> { '\'', '"', '(' };
+            var groupEndChar = new List<char> { '\'', '"', ')' };
+            var builder = new StringBuilder();
+            int grouping = 0;
+            foreach (var c in content)
+            {
+                if (c == split && grouping == 0)
+                {
+                    ret.Add(builder.ToString());
+                    builder.Clear();
+                    continue;
+                }
+                else if(groupChar.Contains(c))
+                {
+                    grouping++;
+                }
+                else if (groupEndChar.Contains(c))
+                {
+                    grouping--;
+                }
+                builder.Append(c);
+            }
+            ret.Add(builder.ToString());
+            if (grouping != 0)
+                throw new Exception("Uncorrect grouping");
+
+            return ret.ToArray();
+        }
+
+        public List<EnemyBulletWave> Load(Enemy enemy)
+        {
+            var list = new List<EnemyBulletWave>();
+
+            var lines = System.IO.File.ReadAllLines(Path);
+
+            foreach (var line in lines)
+            {
+                if (line.Trim().StartsWith("//"))
+                    continue;
+
+                var spl = line.Split(new[] { ' ' }, 2);
+                if (spl.Length > 0 && !string.IsNullOrWhiteSpace(line))
+                {
+                    var param = new List<object>();
+                    param.Add(enemy);
+                    var paramSpl = ParamParse(spl[1]);
+
+                    foreach(var raw in paramSpl)
+                    {
+                        var trim = raw.Trim();
+
+                        if ((trim.StartsWith("\"") && trim.StartsWith("\"")) || (trim.StartsWith("'") && trim.EndsWith("'")))
+                            param.Add(trim.Trim(new[] { '\'', '"' }));
+                        else if (trim.ToLower() == "true")
+                            param.Add(true);
+                        else if (trim.ToLower() == "false")
+                            param.Add(false);
+                        else
+                        {
+                            var funcMatch = Regex.Match(trim, @"((.{1,})\((.*)\))");
+                            if (funcMatch.Success)
+                            {
+                                var funcName = funcMatch.Groups[2].Value.ToLower().Trim();
+                                var argsContent = funcMatch.Groups[3].Value.Trim();
+                                switch (funcName)
+                                {
+                                    case "colorrect":
+                                        if (ColorDict.ContainsKey(argsContent))
+                                        {
+                                            param.Add(new RectangleSprite(ColorDict[argsContent]));
+                                        }
+                                        else
+                                        {
+                                            param.Add(new RectangleSprite(ParseHexColor(argsContent)));
+                                        }
+                                        break;
+                                    default:
+                                        throw new NotImplementedException("Unknown Function");
+                                }
+                            }
+                            else
+                            {
+                                param.Add(Convert.ToDouble(raw));
+                            }
+                        }
+                    }
+
+                    foreach (var type in WaveDefines)
+                    {
+                        if (type.Name == spl[0].Trim())
+                        {
+                            var caa = type.GetConstructors();
+                            list.Add((EnemyBulletWave)Activator.CreateInstance(type, param.ToArray()));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+    }
+
     public class Enemy : GameObject
     {
         public virtual double BodyDamage { get; set; } = 20;
@@ -277,157 +440,11 @@ namespace MonoMonoDaisuki.Game
 
             Sprite = new RectangleSprite(Color.Lime);
 
+            var t = new EnemyBulletWaveLoader("Game\\wave.wvsc").Load(this);
+
             WaveScheduler = new EnemyBulletWaveScheduler();
             WaveScheduler.IsLoop = true;
-            WaveScheduler.Waves = new List<EnemyBulletWave>()
-            {
-                new AllDirectionEnemyBulletWave(this, 20, 4, 300, 3.5, new RectangleSprite(Color.Red), 3),
-                new AllDirectionEnemyBulletWave(this, 10, 2, 50, 3.5, new RectangleSprite(Color.Green), 23),
-                new AllDirectionEnemyBulletWave(this, 40, 2, 600, 3.5, new RectangleSprite(Color.MediumPurple), 11),
-                new AllDirectionEnemyBulletWave(this, 20, 4, 300, 3.5, new RectangleSprite(Color.Blue)),
-                new AllDirectionEnemyBulletWave(this, 20, 1, 0, 3.5, new RectangleSprite(Color.Red), 3),
-                new AllDirectionEnemyBulletWave(this, 17, 1, 0, 1.88, new RectangleSprite(Color.Orange), 10),
-                new AllDirectionEnemyBulletWave(this, 5, 1, 0, 3.01, new RectangleSprite(Color.Pink), 7),
-                new AllDirectionEnemyBulletWave(this, 20, 2, 300, 3.5, new RectangleSprite(Color.Red), 20),
-
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 0),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 10),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 20),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 30),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 40),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 50),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 60),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 70),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 80),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 90),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 100),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 110),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 120),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 130),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 140),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 150),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 160),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 170),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 180),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 190),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 200),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 210),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 220),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 230),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 240),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 250),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 260),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 270),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 280),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 290),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 300),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 310),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 320),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 330),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 340),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 350),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 360),
-
-                new AllDirectionEnemyBulletWave(this, 17, 1, 0, 1.88, new RectangleSprite(Color.Orange), 10),
-
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 0),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 10),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 20),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 30),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 40),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 50),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 60),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 70),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 80),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 90),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 100),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 110),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 120),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 130),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 140),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 150),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 160),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 170),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 180),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 190),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 200),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 210),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 220),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 230),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 240),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 250),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 260),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 270),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 280),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 290),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 300),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 310),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 320),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 330),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 25, 3.01, new RectangleSprite(Color.Pink), 340),
-                new AllDirectionEnemyBulletWave(this, 3, 1, 1000, 3.01, new RectangleSprite(Color.Pink), 350),
-
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.Black), 0, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.White), 12, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.Black), 22, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.White), 44, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.Black), 0, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.White), 11, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 4200, 2.5, new RectangleSprite(Color.Black), 7, bulletSize:8),
-
-                new EnemySpeedSetWave(this, 1.8),
-                new AllDirectionEnemyBulletWave(this, 1, 400, 12, 10.5, new RectangleSprite(new Color(253, 72, 157)), 90, bulletSize:25, bulletDamage:0.5),
-                new EnemySpeedSetWave(this, 3),
-                new SleepBulletWave(this, 300),
-
-                new AllDirectionEnemyBulletWave(this, 40, 3, 500, 2.5, new RectangleSprite(Color.LavenderBlush), 7, bulletSize:8),
-                new SleepBulletWave(this, 300),
-                
-                new EnemyToggleRandomTargetWave(this, false),
-                new EnemySpeedSetWave(this, 4.5),
-                new EnemySetXTargetWave(this, 0.5),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.75),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.25),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.25),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.89),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.57),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.21),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.74),
-                new SleepBulletWave(this, 400),
-                new AllDirectionEnemyBulletWave(this, 1, 25, 50, 10, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:50, bulletDamage:0.5),
-                new EnemySetXTargetWave(this, 0.0),
-                new SleepBulletWave(this, 100),
-                new EnemySpeedSetWave(this, 2),
-                new AllDirectionEnemyBulletWave(this, 1, 6, 350, 5, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:40),
-                new SleepBulletWave(this, 100),
-                new EnemySetXTargetWave(this, 1.0),
-                new AllDirectionEnemyBulletWave(this, 1, 8, 350, 5, new RectangleSprite(new Color(0, 255, 122, 170)), 90, bulletSize:40),
-                new EnemySpeedSetWave(this, 3),
-                new EnemyToggleRandomTargetWave(this, true),
-
-                new SleepBulletWave(this, 750),
-                new AllDirectionEnemyBulletWave(this, 55, 1, 600, 2.5, new RectangleSprite(Color.Black), 0, bulletSize:25),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.White), 12, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 55, 1, 600, 2.5, new RectangleSprite(Color.Black), 22, bulletSize:25),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.White), 44, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 55, 1, 600, 2.5, new RectangleSprite(Color.Black), 0, bulletSize:25),
-                new AllDirectionEnemyBulletWave(this, 80, 1, 600, 2.5, new RectangleSprite(Color.White), 11, bulletSize:8),
-                new AllDirectionEnemyBulletWave(this, 55, 1, 4200, 2.5, new RectangleSprite(Color.Black), 7, bulletSize:25),
-            };
+            WaveScheduler.Waves = t;
         }
 
         public override void Load()
@@ -754,7 +771,7 @@ namespace MonoMonoDaisuki.Game
             if (EnemyHP <= 0)
             {
                 Stop();
-                for (int i = 0; i < 123; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     Console.WriteLine("AYYYY Congratulation, Success");
                 }

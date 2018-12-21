@@ -1,0 +1,153 @@
+﻿// Bullet Wave Defines
+// AllDirectionEnemyBulletWave (일회 발사시 총알수), (발사횟수), (발사 간격), (총알속도), colorRect(색상), (각도 오프셋), (데미지), (크기)
+// EnemySpeedSetWave (적 이동속도)
+// EnemySetXTargetWave (적 X 목표 위치)
+// EnemyToggleRandomTargetWave (적 랜덤위치 이동 허용)
+// SleepBulletWave (스케줄러 잠시 휴식)
+
+AllDirectionEnemyBulletWave 20, 4, 300, 3.5, colorRect(Red), 3, 10, 7
+AllDirectionEnemyBulletWave 10, 2, 50, 3.5, colorRect(Green), 23, 10, 7
+AllDirectionEnemyBulletWave 40, 2, 600, 3.5, colorRect(MediumPurple), 11, 10, 7
+AllDirectionEnemyBulletWave 20, 4, 300, 3.5, colorRect(Blue), 0, 10, 7
+AllDirectionEnemyBulletWave 20, 1, 0, 3.5, colorRect(Red), 3, 10, 7
+AllDirectionEnemyBulletWave 17, 1, 0, 1.88, colorRect(Orange), 10, 10, 7
+AllDirectionEnemyBulletWave 5, 1, 0, 3.01, colorRect(Pink), 7, 10, 7
+AllDirectionEnemyBulletWave 20, 2, 300, 3.5, colorRect(Red), 20, 10, 7
+
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 0, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 10, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 20, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 30, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 40, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 50, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 60, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 70, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 80, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 90, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 100, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 110, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 120, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 130, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 140, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 150, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 160, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 170, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 180, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 190, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 200, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 210, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 220, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 230, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 240, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 250, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 260, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 270, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 280, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 290, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 300, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 310, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 320, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 330, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 340, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 350, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 360, 10, 7
+
+AllDirectionEnemyBulletWave 17, 1, 0, 1.88, colorRect(Orange), 10, 10, 7
+
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 0, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 10, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 20, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 30, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 40, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 50, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 60, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 70, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 80, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 90, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 100, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 110, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 120, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 130, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 140, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 150, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 160, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 170, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 180, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 190, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 200, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 210, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 220, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 230, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 240, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 250, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 260, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 270, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 280, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 290, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 300, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 310, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 320, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 330, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 25, 3.01, colorRect(Pink), 340, 10, 7
+AllDirectionEnemyBulletWave 3, 1, 1000, 3.01, colorRect(Pink), 350, 10, 7
+
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(Black), 0, 10, 8
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(White), 12, 10, 8
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(Black), 22, 10, 8
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(White), 44, 10, 8
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(Black), 0, 10, 8
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(White), 11, 10, 8
+AllDirectionEnemyBulletWave 80, 1, 4200, 2.5, colorRect(Black), 7, 10, 8
+
+EnemySpeedSetWave 1.8
+AllDirectionEnemyBulletWave 1, 400, 12, 10.5, colorRect(#FD489D), 90, 0.5, 25
+EnemySpeedSetWave 3
+SleepBulletWave 300
+
+AllDirectionEnemyBulletWave 40, 3, 500, 2.5, colorRect(LavenderBlush), 7, 10, 8
+SleepBulletWave 300
+
+EnemyToggleRandomTargetWave false
+EnemySpeedSetWave 4.5
+EnemySetXTargetWave 0.5
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.75
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.25
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.25
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.89
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.57
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.21
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.74
+SleepBulletWave 400
+AllDirectionEnemyBulletWave 1, 25, 50, 10, colorRect(#00FF7A), 90, 0.5, 50
+EnemySetXTargetWave 0.0
+SleepBulletWave 100
+EnemySpeedSetWave 2
+AllDirectionEnemyBulletWave 1, 6, 350, 5, colorRect(#00FF7A), 90, 10, 40
+SleepBulletWave 100
+EnemySetXTargetWave 1.0
+AllDirectionEnemyBulletWave 1, 8, 350, 5, colorRect(#00FF7A), 90, 10, 40
+EnemySpeedSetWave 3
+EnemyToggleRandomTargetWave true
+
+SleepBulletWave 750
+AllDirectionEnemyBulletWave 55, 1, 600, 2.5, colorRect(Black), 0, 10, 25
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(White), 12, 10, 8
+AllDirectionEnemyBulletWave 55, 1, 600, 2.5, colorRect(Black), 22, 10, 25
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(White), 44, 10, 8
+AllDirectionEnemyBulletWave 55, 1, 600, 2.5, colorRect(Black), 0, 10, 25
+AllDirectionEnemyBulletWave 80, 1, 600, 2.5, colorRect(White), 11, 10, 8
+AllDirectionEnemyBulletWave 55, 1, 4200, 2.5, colorRect(Black), 7, 10, 25
